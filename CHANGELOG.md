@@ -6,6 +6,78 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.9.20] — 2026-05-18
+
+Hotfix: revert the Codex Stop → session-end chain shipped in v0.9.19.
+
+### Fixed
+
+- **Revert Codex Stop hook session-end chain** ([PR #501](https://github.com/rohitg00/agentmemory/pull/501) by [@Rex57](https://github.com/Rex57), reverts v0.9.19's [#495](https://github.com/rohitg00/agentmemory/pull/495), re-opens [#493](https://github.com/rohitg00/agentmemory/issues/493)). Post-merge field-testing surfaced the underlying issue: Codex `Stop` fires before the overall conversation is truly finished — multiple Stops bracket each assistant turn within one session. Chaining `session-end.mjs` from Stop marked sessions completed too early, with later observations still arriving against an `endedAt`-stamped record. Restored to summarize-only Stop; the SessionEnd-shaped solution stays open as [#493](https://github.com/rohitg00/agentmemory/issues/493).
+
+[0.9.20]: https://github.com/rohitg00/agentmemory/compare/v0.9.19...v0.9.20
+
+## [0.9.19] — 2026-05-18
+
+Feature + hardening wave. Sessions now link to the git commits they shipped (forward + reverse lookup, REST + MCP surfaces). OpenAI provider transport collapses into one shared module with auto-detected Azure URL style (legacy `/openai/deployments/<dep>` and v1 `/openai/v1` both supported). Graph retrieval switches from BFS to Dijkstra over the weighted edge graph. Codex Stop hook chains session-end. Plugin MCP server inherits `AGENTMEMORY_URL` / `AGENTMEMORY_SECRET` from the shell. Point fix routes the bundled iii-console installer around an upstream tag-prefix bug. 1007+ tests pass.
+
+### Added
+
+- **Session-to-commit linking** ([PR #498](https://github.com/rohitg00/agentmemory/pull/498)). New `KV.commits` namespace keyed by full SHA holds `CommitLink` records (sha, shortSha, branch, repo, message, author, authoredAt, files, sessionIds). `Session.commitShas[]` provides the forward back-reference. REST: `POST /agentmemory/session/commit` upserts links (merges `sessionIds` on re-link, preserves `linkedAt`); `GET /agentmemory/commits/:sha` and `GET /agentmemory/commits` round-trip. MCP: `memory_commit_lookup` and `memory_commits` tools. Post-commit hook auto-captures the link on every commit in the working directory. Closes the loop on "what session wrote this code" / "what commits did this session ship" without leaving agentmemory.
+
+- **Azure OpenAI v1 URL pattern auto-detection** ([PR #462](https://github.com/rohitg00/agentmemory/pull/462), closes [#371](https://github.com/rohitg00/agentmemory/issues/371)). Both the LLM and embedding providers now route through `_openai-shared.ts` and auto-detect Azure URL style:
+  - `OPENAI_BASE_URL=https://r.openai.azure.com/openai/deployments/<dep>` → legacy URL pattern, `api-version` query param via `OPENAI_API_VERSION` (default `2024-08-01-preview`).
+  - `OPENAI_BASE_URL=https://r.openai.azure.com` (bare host, or `/openai`, or `/openai/v1`) → v1 GA pattern, `/openai/v1/<route>`, deployment name carried in the request body as `model`.
+  - Net effect: Azure embeddings work for the first time (LLM-side Azure shipped in v0.9.17; embedding was still hardcoded to `/v1/embeddings` + Bearer). Closes [#199](https://github.com/rohitg00/agentmemory/issues/199) (consolidation) as superseded.
+
+### Changed
+
+- **Graph retrieval: BFS → Dijkstra over weighted edges** ([PR #463](https://github.com/rohitg00/agentmemory/pull/463), closes [#328](https://github.com/rohitg00/agentmemory/issues/328) filed by [@Tanmay-008](https://github.com/Tanmay-008) with benchmark numbers showing the BFS edge-count semantics + O(n) `Array.shift()` profile). Memory graph edges carry weights 0.1–1.0; BFS visited by edge-count regardless, so a one-hop weak edge ranked the same as a two-hop strong chain. Dijkstra over `cost = 1/max(weight, 0.01)` selects weight-optimal paths instead. Adjacency map built once in O(V+E) and min-heap dequeue at O(log V) replace the prior O(V·E) + O(n) `Array.shift()` profile. `maxDepth` semantics preserved (still edge-count bound). The `startNode` path is excluded from returned paths so the dedicated `score=1.0` fallback loop in `searchByEntities` fires as designed (regression catch from the inline review).
+
+- **Codex Stop hook chains session-end** ([PR #495](https://github.com/rohitg00/agentmemory/pull/495) by [@Rex57](https://github.com/Rex57), fixes [#493](https://github.com/rohitg00/agentmemory/issues/493) also filed by [@Rex57](https://github.com/Rex57)). `hooks.codex.json` Stop now runs `stop.mjs` followed by `session-end.mjs`. Codex doesn't ship a separate `SessionEnd` lifecycle event, so the session would otherwise stay open after the user terminated the Codex session. Tests assert both commands appear in the Stop chain.
+
+- **Plugin MCP entry inherits shell env via passthrough** ([PR #460](https://github.com/rohitg00/agentmemory/pull/460), closes [#375](https://github.com/rohitg00/agentmemory/issues/375) filed by [@anthony-spruyt](https://github.com/anthony-spruyt)). `plugin/.mcp.json` and `AGENTMEMORY_MCP_BLOCK` (the template `agentmemory connect <agent>` writes into `~/.claude.json`, `~/.cursor/mcp.json`, etc.) now declare `env: { AGENTMEMORY_URL: "${AGENTMEMORY_URL}", AGENTMEMORY_SECRET: "${AGENTMEMORY_SECRET}" }`. The MCP host substitutes shell values at server launch. When the vars are unset, the host passes empty strings; the standalone shim's `process.env["AGENTMEMORY_URL"] || "http://localhost:3111"` falls back to localhost. One wired entry now covers both local and remote (k8s / reverse-proxied) deployments without `/doctor` "duplicate server" warnings.
+
+### Fixed
+
+- **`ensureIiiConsole()` install path** (`src/cli.ts`). The upstream `install.iii.dev/console/main/install.sh` script's jq predicate filters releases with `startswith("v")` while `iii-hq/iii` tags as `iii/v0.12.0`. The script bails with `no stable iii release found` on every fresh install. Switched the install command to `curl ... | bash -s -- --next` until upstream patches the script — the `--next` codepath uses a regex on `-next.` without the buggy `startswith` constraint, so it succeeds against the same tag set. Inline comment documents the upstream bug + revert condition.
+
+### Infrastructure
+
+- 91 test files, 1007 tests pass on `chore(release): v0.9.19`.
+- Bundles five PRs ([#460](https://github.com/rohitg00/agentmemory/pull/460), [#462](https://github.com/rohitg00/agentmemory/pull/462), [#463](https://github.com/rohitg00/agentmemory/pull/463), [#495](https://github.com/rohitg00/agentmemory/pull/495), [#498](https://github.com/rohitg00/agentmemory/pull/498)) plus the inline iii-console installer workaround into one patch release.
+
+[0.9.19]: https://github.com/rohitg00/agentmemory/compare/v0.9.18...v0.9.19
+
+## [0.9.18] — 2026-05-17
+
+Hardening + DX wave. Five fixes land together: lessons now flow into the auto-inject context payload (closes a half-finished loop from earlier releases — see #381 / #457), the viewer drops `data:` from its `img-src` CSP by self-hosting its favicon, the filesystem watcher redacts PEM private-key blocks and standalone JWTs before transport, the mcp-standalone livez probe gets a dependency-injection seam that kills a flaky test, and the OpenAI timeout precedence is documented + tightened (strict integer parse, `OPENAI_TIMEOUT_MS` keeps its v0.9.17 meaning as an alias of the global `AGENTMEMORY_LLM_TIMEOUT_MS`). 1007/1007 tests pass.
+
+### Added
+
+- **Lessons auto-injected into `mem::context` payload** ([PR #458](https://github.com/rohitg00/agentmemory/pull/458), closes [#457](https://github.com/rohitg00/agentmemory/issues/457), surfaced in discussion [#381](https://github.com/rohitg00/agentmemory/discussions/381)). Lessons were generated + stored but only retrievable via an explicit `memory_lesson_recall` MCP call — agents rarely thought to invoke it, so the loop was half-done. `mem::context` now reads `KV.lessons` alongside slots + profile, ranks by `(project-relevance × confidence)` (project-scoped lessons get a 1.5× boost), filters tombstoned + cross-project entries, caps at top-10, and emits a `## Lessons Learned` block competing fairly for the token budget. Block recency tracks the most-recent `lastReinforcedAt || updatedAt`, so hot lessons survive when budget tightens.
+
+- **Self-hosted viewer favicon** ([PR #452](https://github.com/rohitg00/agentmemory/pull/452), closes [#447](https://github.com/rohitg00/agentmemory/issues/447)). The viewer's inline-SVG `data:` favicon (added in #313) required `data:` in `img-src` — a broader allowance than the viewer actually needed. The favicon now lives at `/favicon.svg` served by the viewer with `Content-Type: image/svg+xml` and `Cache-Control: public, max-age=3600`; build script copies the asset into `dist/viewer/` alongside `index.html`. CSP reverts to bare `img-src 'self'`.
+
+### Changed
+
+- **`OPENAI_TIMEOUT_MS` is now an alias of `AGENTMEMORY_LLM_TIMEOUT_MS`** ([PR #453](https://github.com/rohitg00/agentmemory/pull/453), closes [#446](https://github.com/rohitg00/agentmemory/issues/446)). v0.9.17 shipped `OPENAI_TIMEOUT_MS` as the OpenAI-scoped knob, then [PR #379](https://github.com/rohitg00/agentmemory/pull/379) introduced the global `AGENTMEMORY_LLM_TIMEOUT_MS` shared across all raw-fetch providers. The OpenAI provider now resolves them in precedence order: `OPENAI_TIMEOUT_MS` → `AGENTMEMORY_LLM_TIMEOUT_MS` → `60_000ms` default. v0.9.17 configs keep working unchanged; new configs should prefer the global. The provider's request also moved onto the shared `fetchWithTimeout` helper that owns AbortController + `clearTimeout` cleanup for every raw-fetch path (minimax, openrouter, gemini, embedding providers).
+
+- **Strict integer parse for timeout env vars** (PR #453, CodeRabbit catch). `parsePositiveInt` rejects values like `"30ms"`, `"1_000"`, `"60s"`, `"30abc"`, `"-30"`, `"0"` via `/^\d+$/` (after trim) instead of letting `parseInt`'s lenience silently swallow trailing units / underscores / signs as a number. Malformed values fall back to the 60s default with no surprise truncation.
+
+### Fixed
+
+- **Filesystem watcher redacts PEM private-key blocks + standalone JWTs in previews** ([PR #450](https://github.com/rohitg00/agentmemory/pull/450), closes [#448](https://github.com/rohitg00/agentmemory/issues/448)). Continues the redaction surface opened in [PR #332](https://github.com/rohitg00/agentmemory/pull/332). PEM blocks (`-----BEGIN ... PRIVATE KEY-----` through `-----END ... PRIVATE KEY-----`, including encrypted, RSA, EC, DSA, OpenSSH, PGP variants) get a state-machine pass that replaces the whole block with a single `[REDACTED ... PRIVATE KEY]` marker; standalone JWT-shaped tokens (three base64url segments separated by dots, length ≥ ~32 chars) are masked to their last 4 chars. Both run before any transport-layer write.
+
+- **mcp-standalone livez probe DI seam kills the test flake** ([PR #451](https://github.com/rohitg00/agentmemory/pull/451), closes [#449](https://github.com/rohitg00/agentmemory/issues/449)). The standalone shim's livez probe used a fixed `fetch` against `localhost:3111` which made the test suite depend on no other agentmemory instance running on the host. New `setLivezProbe()` injection seam lets tests provide a deterministic probe; default behaviour for production users is unchanged.
+
+### Infrastructure
+
+- 91 test files (was 90), 1007 tests (was 992). New `test/context-lessons.test.ts` (8 cases) covers lessons-auto-inject inclusion, empty-state no-op, project ranking, cross-project isolation, soft-delete skip, top-10 cap, confidence rendering, optional `context` string append.
+
+- Bundled the four follow-up issues filed during the v0.9.17 audit wave ([#446](https://github.com/rohitg00/agentmemory/issues/446), [#447](https://github.com/rohitg00/agentmemory/issues/447), [#448](https://github.com/rohitg00/agentmemory/issues/448), [#449](https://github.com/rohitg00/agentmemory/issues/449)) plus the cross-project lesson-injection gap surfaced in discussion [#381](https://github.com/rohitg00/agentmemory/discussions/381) into a single patch release — no behaviour changes for existing users beyond the hardening above.
+
+[0.9.18]: https://github.com/rohitg00/agentmemory/compare/v0.9.17...v0.9.18
+
 ## [0.9.17] — 2026-05-16
 
 OpenAI-compatible LLM provider lands the universal-adapter shape (one provider config covers OpenAI, Azure OpenAI auto-detected by hostname, DeepSeek, SiliconFlow, vLLM, LM Studio, Ollama via `/v1`, plus any future endpoint that mirrors `POST /v1/chat/completions`). Worker registration now pins a stable `project_name` for engine telemetry so attribution reads cleanly across hosts. Comparison section on agent-memory.dev no longer wraps awkwardly after the v0.9.16 refresh.

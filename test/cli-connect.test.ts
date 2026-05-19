@@ -112,6 +112,27 @@ describe("agentmemory connect — claude-code adapter (mock filesystem)", () => 
     expect(second.kind).toBe("already-wired");
   });
 
+  it("install() writes env passthrough block for AGENTMEMORY_URL + AGENTMEMORY_SECRET (#375)", async () => {
+    // Remote deployments (k8s, reverse proxy) set AGENTMEMORY_URL +
+    // AGENTMEMORY_SECRET in the shell. The wired MCP entry must honour
+    // those via ${VAR} expansion so a single entry covers both local
+    // and remote without the user needing to add a duplicate config
+    // that triggers a /doctor duplicate-server warning.
+    const claudeDir = join(tmpHome, ".claude");
+    require("node:fs").mkdirSync(claudeDir, { recursive: true });
+    writeFileSync(join(tmpHome, ".claude.json"), JSON.stringify({}));
+
+    const a = await loadAdapter();
+    const result = await a.install({ dryRun: false, force: false });
+    expect(result.kind).toBe("installed");
+
+    const config = JSON.parse(readFileSync(join(tmpHome, ".claude.json"), "utf-8"));
+    const entry = config.mcpServers.agentmemory;
+    expect(entry.env).toBeDefined();
+    expect(entry.env.AGENTMEMORY_URL).toBe("${AGENTMEMORY_URL}");
+    expect(entry.env.AGENTMEMORY_SECRET).toBe("${AGENTMEMORY_SECRET}");
+  });
+
   it("install() with --force re-writes even when already wired", async () => {
     require("node:fs").mkdirSync(join(tmpHome, ".claude"), { recursive: true });
     writeFileSync(
