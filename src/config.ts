@@ -50,6 +50,18 @@ function hasRealValue(v: string | undefined): v is string {
 function detectProvider(env: Record<string, string>): ProviderConfig {
   const maxTokens = parseInt(env["MAX_TOKENS"] || "4096", 10);
 
+  // TowerAI: checked first — state.json exists regardless of other env vars injected by Claude Code
+  if (
+    hasRealValue(env["TOWERAI_TOKEN"]) ||
+    existsSync(join(homedir(), ".towerai", "state.json"))
+  ) {
+    return {
+      provider: "towerai",
+      model: env["TOWERAI_MODEL"] || "gemini-3.1-pro-preview",
+      maxTokens,
+    };
+  }
+
   // OpenAI-compatible: supports OpenAI, DeepSeek, SiliconFlow, Azure, vLLM, LM Studio
   if (hasRealValue(env["OPENAI_API_KEY"]) && env["OPENAI_API_KEY_FOR_LLM"] !== "false") {
     return {
@@ -168,7 +180,9 @@ export function detectLlmProviderKind(): "llm" | "noop" {
     hasRealValue(env["OPENROUTER_API_KEY"]) ||
     hasRealValue(env["MINIMAX_API_KEY"]) ||
     (hasRealValue(env["OPENAI_API_KEY"]) &&
-      env["OPENAI_API_KEY_FOR_LLM"] !== "false")
+      env["OPENAI_API_KEY_FOR_LLM"] !== "false") ||
+    hasRealValue(env["TOWERAI_TOKEN"]) ||
+    existsSync(join(homedir(), ".towerai", "state.json"))
   ) {
     return "llm";
   }
@@ -305,6 +319,7 @@ const VALID_PROVIDERS = new Set([
   "agent-sdk",
   "minimax",
   "openai",
+  "towerai",
 ]);
 
 export function loadFallbackConfig(): FallbackConfig {

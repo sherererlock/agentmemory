@@ -9,6 +9,7 @@ import { MinimaxProvider } from "./minimax.js";
 import { NoopProvider } from "./noop.js";
 import { OpenAIProvider } from "./openai.js";
 import { OpenRouterProvider } from "./openrouter.js";
+import { TowerAIProvider } from "./towerai.js";
 import { ResilientProvider } from "./resilient.js";
 import { FallbackChainProvider } from "./fallback-chain.js";
 import { getEnvVar } from "../config.js";
@@ -107,6 +108,14 @@ function createBaseProvider(config: ProviderConfig): MemoryProvider {
         config.model,
         config.maxTokens,
         config.baseURL,
+      );
+    }
+    case "towerai": {
+      // Credentials resolved inside TowerAIProvider: env var > ~/.towerai/state.json
+      return new TowerAIProvider(
+        getEnvVar("TOWERAI_TOKEN") ?? "",
+        config.model,
+        config.maxTokens,
       );
     }
     case "noop":

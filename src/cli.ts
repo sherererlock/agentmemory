@@ -513,20 +513,22 @@ async function ensureIiiConsole(): Promise<IiiConsoleState> {
   const state = detectIiiConsole();
   if (state.kind === "installed") return state;
 
-  // Non-interactive contexts get the panel hint but no prompt.
-  if (!process.stdin.isTTY || process.env["CI"]) return state;
   const prefs = readPrefs();
   if (prefs.skipConsoleInstall) return state;
 
-  const answer = await p.confirm({
-    message:
-      "iii console gives engine-level visibility (workers, functions, queues, traces). Install now?",
-    initialValue: true,
-  });
-  if (p.isCancel(answer)) return state;
-  if (answer === false) {
-    writePrefs({ skipConsoleInstall: true });
-    return state;
+  // Non-interactive or AGENTMEMORY_YES: auto-install without prompting.
+  const autoYes = !process.stdin.isTTY || process.env["CI"] || process.env["AGENTMEMORY_YES"] === "1";
+  if (!autoYes) {
+    const answer = await p.confirm({
+      message:
+        "iii console gives engine-level visibility (workers, functions, queues, traces). Install now?",
+      initialValue: true,
+    });
+    if (p.isCancel(answer)) return state;
+    if (answer === false) {
+      writePrefs({ skipConsoleInstall: true });
+      return state;
+    }
   }
 
   const shBin = whichBinary("sh");
