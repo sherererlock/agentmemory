@@ -164,6 +164,8 @@
 
     .tab-bar {
       display: flex;
+      height: 48px;
+      flex-shrink: 0;
       border-bottom: 1px solid var(--border-light);
       background: var(--bg);
       overflow-x: auto;
@@ -2230,7 +2232,26 @@
 
       var filtered = items.filter(function(m) {
         if (typeFilter && m.type !== typeFilter) return false;
-        if (search && !(m.title || '').toLowerCase().includes(search) && !(m.content || '').toLowerCase().includes(search)) return false;
+        const normalizedSearch = (search || '')
+          .normalize("NFKC")
+          .toLowerCase();
+ 
+        const normalizedTitle = (m.title || '')
+          .normalize("NFKC")
+          .toLowerCase();
+
+        const normalizedContent = (m.content || '')
+          .normalize("NFKC")
+          .toLowerCase();
+
+        if (
+          search &&
+          !normalizedTitle.includes(normalizedSearch) &&
+          !normalizedContent.includes(normalizedSearch)
+        ) {
+        return false;
+        }
+
         return true;
       });
 
