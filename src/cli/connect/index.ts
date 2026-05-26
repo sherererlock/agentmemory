@@ -1,20 +1,26 @@
 import { platform } from "node:os";
 import * as p from "@clack/prompts";
 import type { ConnectAdapter, ConnectOptions, ConnectResult } from "./types.js";
+import { adapter as antigravity } from "./antigravity.js";
 import { adapter as claudeCode } from "./claude-code.js";
 import { adapter as codex } from "./codex.js";
 import { adapter as cursor } from "./cursor.js";
 import { adapter as geminiCli } from "./gemini-cli.js";
 import { adapter as hermes } from "./hermes.js";
+import { adapter as kiro } from "./kiro.js";
 import { adapter as openclaw } from "./openclaw.js";
 import { adapter as openhuman } from "./openhuman.js";
 import { adapter as pi } from "./pi.js";
+import { adapter as qwen } from "./qwen.js";
 
 export const ADAPTERS: readonly ConnectAdapter[] = [
   claudeCode,
   codex,
   cursor,
   geminiCli,
+  qwen,
+  antigravity,
+  kiro,
   openclaw,
   hermes,
   pi,

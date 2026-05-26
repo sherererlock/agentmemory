@@ -34,6 +34,44 @@ export function getEmbeddingProvider(): EmbeddingProvider | null {
   return currentEmbeddingProvider
 }
 
+export function vectorIndexRemove(id: string): void {
+  vectorIndex?.remove(id);
+}
+
+// Persistence sync hook. Without this, index removals only live in
+// memory; a crash/SIGKILL before graceful shutdown reloads a stale
+// snapshot at boot and the deleted entry resurrects in the index.
+// Wired by src/index.ts after IndexPersistence is constructed; no-op
+// until then so unit tests that exercise the delete paths in
+// isolation don't need to wire persistence.
+let indexPersistence: {
+  scheduleSave: () => void;
+  save: () => Promise<void>;
+} | null = null;
+
+export function setIndexPersistence(
+  p: { scheduleSave: () => void; save: () => Promise<void> } | null,
+): void {
+  indexPersistence = p;
+}
+
+export function scheduleIndexSave(): void {
+  indexPersistence?.scheduleSave();
+}
+
+// Synchronous flush variant for delete paths. The debounced
+// scheduleSave is fine for adds (chatty), but a hard process exit
+// inside the 5s debounce window would lose deletes and resurrect
+// removed entries on next boot. Deletes are infrequent enough that
+// awaiting a single write per operation is acceptable. save() catches
+// its own errors via IndexPersistence.logFailure, so this resolves
+// even when persistence fails — callers must not treat a failed
+// flush as a fatal error on the delete itself (the KV delete already
+// committed before this is invoked).
+export async function flushIndexSave(): Promise<void> {
+  await indexPersistence?.save();
+}
+
 // Hard cap on embedding input length. Most providers cap input around
 // 8k tokens (~32k chars at ~4 chars/token). Truncate defensively so a
 // huge memory.content can't 400 the embed call or blow context budget
