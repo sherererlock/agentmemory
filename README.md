@@ -11,6 +11,21 @@
 </p>
 
 <p align="center">
+  <a href="README.md">English</a> |
+  <a href="READMEs/README.zh-CN.md">简体中文</a> |
+  <a href="READMEs/README.zh-TW.md">繁體中文</a> |
+  <a href="READMEs/README.ja-JP.md">日本語</a> |
+  <a href="READMEs/README.ko-KR.md">한국어</a> |
+  <a href="READMEs/README.es-ES.md">Español</a> |
+  <a href="READMEs/README.tr-TR.md">Türkçe</a> |
+  <a href="READMEs/README.ru-RU.md">Русский</a> |
+  <a href="READMEs/README.hi-IN.md">हिन्दी</a> |
+  <a href="READMEs/README.pt-BR.md">Português</a> |
+  <a href="READMEs/README.fr-FR.md">Français</a> |
+  <a href="READMEs/README.de-DE.md">Deutsch</a>
+</p>
+
+<p align="center">
   <a href="https://trendshift.io/repositories/25123" target="_blank"><img src="https://trendshift.io/api/badge/repositories/25123" alt="rohitg00/agentmemory | Trendshift" width="250" height="55"/></a>
 </p>
 
@@ -413,7 +428,7 @@ Implementation details live in `src/cli.ts` (see `runUpgrade` around the `src/cl
 
 ### Claude Code (one block, paste it)
 
-```
+```text
 Install agentmemory: run `npx @agentmemory/agentmemory` in a separate terminal to start the memory server. Then run `/plugin marketplace add rohitg00/agentmemory` and `/plugin install agentmemory` — the plugin registers all 12 hooks, 8 skills, AND auto-wires the `@agentmemory/mcp` stdio server via its `.mcp.json`, so you get 53 MCP tools (memory_smart_search, memory_save, memory_sessions, memory_governance_delete, etc.) without any extra config step. Verify with `curl http://localhost:3111/agentmemory/health`. The real-time viewer is at http://localhost:3113.
 ```
 
@@ -464,7 +479,7 @@ This adds an idempotent block to `~/.codex/hooks.json` referencing absolute path
 <details>
 <summary><b>OpenClaw (paste this prompt)</b></summary>
 
-```
+```text
 Install agentmemory for OpenClaw. Run `npx @agentmemory/agentmemory` in a separate terminal to start the memory server on localhost:3111. Then add this to my OpenClaw MCP config so agentmemory is available with all 53 memory tools:
 
 {
@@ -489,7 +504,7 @@ Full guide: [`integrations/openclaw/`](integrations/openclaw/)
 <details>
 <summary><b>Hermes Agent (paste this prompt)</b></summary>
 
-```
+```text
 Install agentmemory for Hermes. Run `npx @agentmemory/agentmemory` in a separate terminal to start the memory server on localhost:3111. Then add this to ~/.hermes/config.yaml so Hermes can use agentmemory as an MCP server with all 53 memory tools:
 
 mcp_servers:
@@ -687,7 +702,7 @@ SSH-tunnel pattern for reaching it.
 
 Every coding agent forgets everything when the session ends. You waste the first 5 minutes of every session re-explaining your stack. agentmemory runs in the background and eliminates that entirely.
 
-```
+```text
 Session 1: "Add auth to the API"
   Agent writes code, runs tests, fixes bugs
   agentmemory silently captures every tool use
@@ -720,7 +735,7 @@ Every AI coding agent ships with built-in memory — Claude Code has `MEMORY.md`
 
 ### Memory Pipeline
 
-```
+```text
 PostToolUse hook fires
   -> SHA-256 dedup (5min window)
   -> Privacy filter (strip secrets, API keys)
