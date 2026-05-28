@@ -302,10 +302,18 @@ async function isAgentmemoryReady(): Promise<boolean> {
 }
 
 function findIiiConfig(): string {
+  // Precedence (user-overridable wins): explicit env > project cwd >
+  // ~/.agentmemory/ > bundled. The bundled config used to win
+  // unconditionally, so users hitting the observability log-feedback
+  // loop (#519) had no way to drop a tamer config in place without
+  // editing node_modules.
+  const envPath = process.env["AGENTMEMORY_III_CONFIG"];
   const candidates = [
+    ...(envPath ? [envPath] : []),
+    join(process.cwd(), "iii-config.yaml"),
+    join(homedir(), ".agentmemory", "iii-config.yaml"),
     join(__dirname, "iii-config.yaml"),
     join(__dirname, "..", "iii-config.yaml"),
-    join(process.cwd(), "iii-config.yaml"),
   ];
   for (const c of candidates) {
     if (existsSync(c)) return c;
@@ -563,7 +571,7 @@ function detectIiiConsole(): IiiConsoleState {
 }
 
 const III_CONSOLE_INSTALL_CMD =
-  "curl -fsSL https://install.iii.dev/console/main/install.sh | sh";
+  "curl -fsSL https://install.iii.dev/iii/main/install.sh | sh";
 
 async function ensureIiiConsole(): Promise<IiiConsoleState> {
   const state = detectIiiConsole();

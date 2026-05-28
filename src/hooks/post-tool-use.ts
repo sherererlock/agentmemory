@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { resolveProject } from "./_project.js";
 
 function isSdkChildContext(payload: unknown): boolean {
   if (process.env["AGENTMEMORY_SDK_CHILD"] === "1") return true;
@@ -36,27 +37,25 @@ async function main() {
     data.tool_response ?? data.tool_output,
   );
 
-  try {
-    await fetch(`${REST_URL}/agentmemory/observe`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
-        hookType: "post_tool_use",
-        sessionId,
-        project: data.cwd || process.cwd(),
-        cwd: data.cwd || process.cwd(),
-        timestamp: new Date().toISOString(),
-        data: {
-          tool_name: data.tool_name,
-          tool_input: data.tool_input,
-          tool_output: truncate(cleanOutput, 8000),
-          ...(imageData ? { image_data: imageData } : {}),
-        },
-      }),
-      signal: AbortSignal.timeout(3000),
-    });
-  } catch {
-  }
+  fetch(`${REST_URL}/agentmemory/observe`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({
+      hookType: "post_tool_use",
+      sessionId,
+      project: resolveProject(data.cwd as string | undefined),
+      cwd: (data.cwd as string | undefined) || process.cwd(),
+      timestamp: new Date().toISOString(),
+      data: {
+        tool_name: data.tool_name,
+        tool_input: data.tool_input,
+        tool_output: truncate(cleanOutput, 8000),
+        ...(imageData ? { image_data: imageData } : {}),
+      },
+    }),
+    signal: AbortSignal.timeout(3000),
+  }).catch(() => {});
+  setTimeout(() => process.exit(0), 500).unref();
 }
 
 function isBase64Image(val: unknown): val is string {

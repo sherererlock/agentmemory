@@ -75,6 +75,14 @@ export const CORE_TOOLS: McpToolDef[] = [
           type: "string",
           description: "Comma-separated relevant file paths",
         },
+        project: {
+          type: "string",
+          description:
+            "Stable canonical project identifier this memory belongs to (e.g. a slug, " +
+            "UUID, or registry key). Must match the value used when the session was " +
+            "started. Do not use filesystem paths or ad-hoc display names — those " +
+            "change across machines and will silently break project scoping.",
+        },
       },
       required: ["content"],
     },
