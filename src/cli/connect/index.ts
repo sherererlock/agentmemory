@@ -4,6 +4,7 @@ import type { ConnectAdapter, ConnectOptions, ConnectResult } from "./types.js";
 import { adapter as antigravity } from "./antigravity.js";
 import { adapter as claudeCode } from "./claude-code.js";
 import { adapter as cline } from "./cline.js";
+import { adapter as copilotCli } from "./copilot-cli.js";
 import { adapter as codex } from "./codex.js";
 import { adapter as continueDev } from "./continue.js";
 import { adapter as cursor } from "./cursor.js";
@@ -20,6 +21,7 @@ import { adapter as zed } from "./zed.js";
 
 export const ADAPTERS: readonly ConnectAdapter[] = [
   claudeCode,
+  copilotCli,
   codex,
   cursor,
   geminiCli,
@@ -93,7 +95,10 @@ export async function runAdapter(
 }
 
 export async function runConnect(args: string[]): Promise<void> {
-  if (platform() === "win32") {
+  const { dryRun, force, all, withHooks, positional } = parseFlags(args);
+  const allowWindowsAdapter =
+    positional.length === 1 && positional[0]?.toLowerCase() === "copilot-cli";
+  if (platform() === "win32" && !allowWindowsAdapter) {
     p.intro("agentmemory connect");
     p.log.warn(
       "Windows: automated `connect` is not supported yet. See https://github.com/rohitg00/agentmemory#other-agents for manual install steps.",
@@ -102,7 +107,6 @@ export async function runConnect(args: string[]): Promise<void> {
     return;
   }
 
-  const { dryRun, force, all, withHooks, positional } = parseFlags(args);
   const opts: ConnectOptions = { dryRun, force, withHooks };
 
   p.intro("agentmemory connect");

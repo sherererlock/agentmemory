@@ -46,8 +46,11 @@ async function main() {
 		return;
 	}
 	if (isSdkChildContext(data)) return;
-	if (data.is_interrupt) return;
-	const sessionId = data.session_id || "unknown";
+	if (data.is_interrupt || data.isInterrupt) return;
+	const sessionId = data.session_id || data.sessionId || "unknown";
+	const toolName = data.tool_name ?? data.toolName;
+	const toolInput = data.tool_input ?? data.toolArgs;
+	const error = data.error ?? data.errorMessage;
 	fetch(`${REST_URL}/agentmemory/observe`, {
 		method: "POST",
 		headers: authHeaders(),
@@ -58,9 +61,9 @@ async function main() {
 			cwd: data.cwd || process.cwd(),
 			timestamp: (/* @__PURE__ */ new Date()).toISOString(),
 			data: {
-				tool_name: data.tool_name,
-				tool_input: typeof data.tool_input === "string" ? data.tool_input.slice(0, 4e3) : JSON.stringify(data.tool_input ?? "").slice(0, 4e3),
-				error: typeof data.error === "string" ? data.error.slice(0, 4e3) : JSON.stringify(data.error ?? "").slice(0, 4e3)
+				tool_name: toolName,
+				tool_input: typeof toolInput === "string" ? toolInput.slice(0, 4e3) : JSON.stringify(toolInput ?? "").slice(0, 4e3),
+				error: typeof error === "string" ? error.slice(0, 4e3) : JSON.stringify(error ?? "").slice(0, 4e3)
 			}
 		}),
 		signal: AbortSignal.timeout(3e3)

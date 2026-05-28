@@ -30,9 +30,14 @@ async function main() {
   }
 
   if (isSdkChildContext(data)) return;
-  if (data.notification_type !== "permission_prompt") return;
+  const notificationType = data.notification_type ?? data.notificationType;
+  if (notificationType !== "permission_prompt") return;
 
-  const sessionId = (data.session_id as string) || "unknown";
+  const rawSessionId = data.session_id ?? data.sessionId;
+  const sessionId =
+    typeof rawSessionId === "string" && rawSessionId.length > 0
+      ? rawSessionId
+      : "unknown";
 
   fetch(`${REST_URL}/agentmemory/observe`, {
     method: "POST",
@@ -44,7 +49,7 @@ async function main() {
       cwd: (data.cwd as string | undefined) || process.cwd(),
       timestamp: new Date().toISOString(),
       data: {
-        notification_type: data.notification_type,
+        notification_type: notificationType,
         title: data.title,
         message: data.message,
       },

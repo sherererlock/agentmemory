@@ -50,7 +50,8 @@ async function main() {
   if (isSdkChildContext(data)) return;
 
   const sessionId =
-    (data.session_id as string) || `ses_${Date.now().toString(36)}`;
+    ((data.session_id || data.sessionId) as string) ||
+    `ses_${Date.now().toString(36)}`;
   const cwd = (data.cwd as string) || process.cwd();
   const project = resolveProject(data.cwd as string | undefined);
 

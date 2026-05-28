@@ -50,16 +50,28 @@ async function main() {
 
   if (isSdkChildContext(data)) return;
 
-  const toolName = data.tool_name as string;
+  const toolName =
+    typeof data.tool_name === "string"
+      ? data.tool_name
+      : typeof data.toolName === "string"
+        ? data.toolName
+        : undefined;
   if (!toolName) return;
 
-  const fileTools = ["Edit", "Write", "Read", "Glob", "Grep"];
-  if (!fileTools.includes(toolName)) return;
+  const normalizedToolName = toolName.toLowerCase();
+  const fileTools = ["edit", "write", "create", "read", "view", "glob", "grep"];
+  if (!fileTools.includes(normalizedToolName)) return;
 
-  const toolInput = (data.tool_input || {}) as Record<string, unknown>;
+  const rawToolInput = data.tool_input ?? data.toolArgs;
+  const toolInput =
+    typeof rawToolInput === "object" &&
+    rawToolInput !== null &&
+    !Array.isArray(rawToolInput)
+      ? (rawToolInput as Record<string, unknown>)
+      : {};
   const files: string[] = [];
   const fileKeys =
-    toolName === "Grep"
+    normalizedToolName === "grep"
       ? ["path", "file"]
       : ["file_path", "path", "file", "pattern"];
   for (const key of fileKeys) {
@@ -69,19 +81,18 @@ async function main() {
   if (files.length === 0) return;
 
   const terms: string[] = [];
-  if (toolName === "Grep" || toolName === "Glob") {
+  if (normalizedToolName === "grep" || normalizedToolName === "glob") {
     const pattern = toolInput["pattern"];
     if (typeof pattern === "string" && pattern.length > 0) {
       terms.push(pattern);
     }
   }
 
-  const sessionId = (data.session_id as string) || "unknown";
-  // Only forward an explicit project field. cwd is an absolute filesystem path
-  // and must not be used as a project identifier — memories are scoped by short
-  // project names (e.g. "api", "web"), not paths. Sending a cwd-path as project
-  // would cause all scoped memories to be incorrectly filtered out on the server
-  // because the path never matches the stored project name.
+  const rawSessionId = data.session_id || data.sessionId;
+  const sessionId =
+    typeof rawSessionId === "string" && rawSessionId.length > 0
+      ? rawSessionId
+      : "unknown";
   const project =
     typeof data.project === "string" && data.project.trim().length > 0
       ? data.project.trim()

@@ -46,7 +46,7 @@ async function main() {
 		return;
 	}
 	if (isSdkChildContext(data)) return;
-	const sessionId = data.session_id || "unknown";
+	const sessionId = data.session_id || data.sessionId || "unknown";
 	fetch(`${REST_URL}/agentmemory/observe`, {
 		method: "POST",
 		headers: authHeaders(),
@@ -56,7 +56,7 @@ async function main() {
 			project: resolveProject(data.cwd),
 			cwd: data.cwd || process.cwd(),
 			timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-			data: { prompt: data.prompt }
+			data: { prompt: data.prompt ?? data.userPrompt }
 		}),
 		signal: AbortSignal.timeout(3e3)
 	}).catch(() => {});

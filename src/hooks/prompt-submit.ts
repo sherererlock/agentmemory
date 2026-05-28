@@ -31,7 +31,7 @@ async function main() {
 
   if (isSdkChildContext(data)) return;
 
-  const sessionId = (data.session_id as string) || "unknown";
+  const sessionId = ((data.session_id || data.sessionId) as string) || "unknown";
 
   fetch(`${REST_URL}/agentmemory/observe`, {
     method: "POST",
@@ -42,7 +42,7 @@ async function main() {
       project: resolveProject(data.cwd as string | undefined),
       cwd: (data.cwd as string | undefined) || process.cwd(),
       timestamp: new Date().toISOString(),
-      data: { prompt: data.prompt },
+      data: { prompt: data.prompt ?? data.userPrompt },
     }),
     signal: AbortSignal.timeout(3000),
   }).catch(() => {});

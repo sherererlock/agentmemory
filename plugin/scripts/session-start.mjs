@@ -49,7 +49,7 @@ async function main() {
 		return;
 	}
 	if (isSdkChildContext(data)) return;
-	const sessionId = data.session_id || `ses_${Date.now().toString(36)}`;
+	const sessionId = data.session_id || data.sessionId || `ses_${Date.now().toString(36)}`;
 	const cwd = data.cwd || process.cwd();
 	const project = resolveProject(data.cwd);
 	const url = `${REST_URL}/agentmemory/session/start`;

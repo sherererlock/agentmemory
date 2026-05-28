@@ -36,6 +36,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // where they overlap; the rest fall back to the generic `◇`.
 const NATIVE_AGENTS: { value: string; label: string; glyph: string }[] = [
   { value: "claude-code", label: "Claude Code", glyph: "⟁" },
+  { value: "copilot-cli", label: "GitHub Copilot CLI", glyph: "◈" },
   { value: "codex", label: "Codex", glyph: "◎" },
   { value: "openhuman", label: "OpenHuman", glyph: "◇" },
   { value: "openclaw", label: "OpenClaw", glyph: "◇" },
@@ -67,7 +68,7 @@ const PROVIDERS: { value: string; label: string; envKey: string | null }[] = [
   { value: "skip", label: "Skip — BM25-only mode (no LLM key)", envKey: null },
 ];
 
-function buildAgentOptions(): { value: string; label: string; hint?: string }[] {
+export function buildAgentOptions(): { value: string; label: string; hint?: string }[] {
   return [
     ...NATIVE_AGENTS.map((a) => ({
       value: a.value,
@@ -80,6 +81,15 @@ function buildAgentOptions(): { value: string; label: string; hint?: string }[] 
       hint: "MCP server",
     })),
   ];
+}
+
+export function getInitialAgentValues(
+  env: Record<string, string | undefined> = process.env,
+): string[] {
+  if (env["COPILOT_CLI"] === "1" || env["COPILOT_AGENT_SESSION_ID"]) {
+    return ["copilot-cli"];
+  }
+  return ["claude-code"];
 }
 
 // Mirror src/cli.ts findEnvExample so onboarding ships the same .env
@@ -177,7 +187,7 @@ export async function runOnboarding(): Promise<OnboardingResult> {
     message: "Which agents will use agentmemory? (space to toggle, enter to confirm)",
     options: buildAgentOptions(),
     required: false,
-    initialValues: ["claude-code"],
+    initialValues: getInitialAgentValues(),
   });
   if (p.isCancel(agentsPicked)) {
     p.cancel("Setup cancelled. Re-run any time with: agentmemory --reset");
@@ -190,7 +200,7 @@ export async function runOnboarding(): Promise<OnboardingResult> {
       [
         "━ how this works ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "All selected agents share the same memory at :3111.",
-        "A memory saved by Claude Code is visible to Codex + Cursor instantly.",
+        "A memory saved by Claude Code is visible to Copilot + Codex + Cursor instantly.",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
       ].join("\n"),
     );

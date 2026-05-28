@@ -117,8 +117,9 @@ Usage: agentmemory [command] [options]
 Commands:
   (default)          Start agentmemory worker
   init               Copy bundled .env.example to ~/.agentmemory/.env if absent
-  connect [agent]    Wire agentmemory into an installed agent (claude-code, codex,
-                     cursor, gemini-cli, openclaw, hermes, pi, openhuman).
+  connect [agent]    Wire agentmemory into an installed agent (claude-code,
+                     copilot-cli, codex, cursor, gemini-cli, openclaw,
+                     hermes, pi, openhuman).
                      No arg = interactive picker. --all wires every detected agent.
                      --dry-run shows what would change. --force re-installs.
   status             Show connection status, memory count, flags, and health
@@ -1163,7 +1164,7 @@ async function runStatus() {
       apiFetch<any>(base, "health"),
       apiFetch<any>(base, "sessions"),
       apiFetch<any>(base, "graph/stats"),
-      apiFetch<any>(base, "export"),
+      apiFetch<any>(base, "memories?count=true"),
       apiFetch<any>(base, "config/flags"),
     ]);
 
@@ -1173,15 +1174,19 @@ async function runStatus() {
     const h = healthRes?.health;
     const status = healthRes?.status || "unknown";
     const version = healthRes?.version || "?";
-    const sessions = Array.isArray(sessionsRes?.sessions) ? sessionsRes.sessions.length : 0;
+    const sessionList = Array.isArray(sessionsRes?.sessions) ? sessionsRes.sessions : [];
+    const sessions = sessionList.length;
     const nodes = Number(graphRes?.totalNodes ?? graphRes?.nodes ?? graphRes?.nodeCount ?? 0);
     const edges = Number(graphRes?.totalEdges ?? graphRes?.edges ?? graphRes?.edgeCount ?? 0);
     const cb = healthRes?.circuitBreaker?.state || "closed";
     const heapMB = h?.memory ? Math.round(h.memory.heapUsed / 1048576) : 0;
     const uptime = h?.uptimeSeconds ? Math.round(h.uptimeSeconds) : 0;
 
-    const obsCount = memoriesRes?.observations?.length || 0;
-    const memCount = memoriesRes?.memories?.length || 0;
+    const obsCount = sessionList.reduce(
+      (sum: number, s: any) => sum + (Number(s?.observationCount) || 0),
+      0,
+    );
+    const memCount = Number(memoriesRes?.latestCount ?? memoriesRes?.total ?? 0) || 0;
     const estFullTokens = obsCount * 80;
     const estInjectedTokens = Math.min(obsCount, 50) * 38;
     const tokensSaved = estFullTokens - estInjectedTokens;

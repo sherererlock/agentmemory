@@ -19,6 +19,7 @@ agentmemory is a persistent memory system for AI coding agents, built on iii-eng
 5. `test/mcp-standalone.test.ts` — tool count assertion
 6. `README.md` — tool counts (search for "MCP tools")
 7. `plugin/.claude-plugin/plugin.json` — tool count in description
+8. `plugin/plugin.json` and `plugin/.mcp.copilot.json` (when present) — tool count or MCP exposure
 
 **When adding REST endpoints, you MUST update:**
 1. `src/triggers/api.ts` — endpoint registration
@@ -32,6 +33,7 @@ agentmemory is a persistent memory system for AI coding agents, built on iii-eng
 4. `src/functions/export-import.ts` — supportedVersions set
 5. `test/export-import.test.ts` — version assertion
 6. `plugin/.claude-plugin/plugin.json` — version field
+7. `plugin/plugin.json` (when present) — version field
 
 **When adding new KV scopes:**
 1. `src/state/schema.ts` — add to the KV object
@@ -115,7 +117,7 @@ Hook scripts in `src/hooks/` are standalone Node.js scripts (no iii-sdk import).
 ## Current Stats (v0.9.16)
 
 - 53 MCP tools (8 visible by default, `AGENTMEMORY_TOOLS=all` for all)
-- 124 REST endpoints
+- 125 REST endpoints
 - 6 MCP resources, 3 MCP prompts
 - 12 hooks, 4 skills
 - 50+ iii functions

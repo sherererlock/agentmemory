@@ -22,7 +22,7 @@ async function main() {
 		return;
 	}
 	if (isSdkChildContext(data)) return;
-	const sessionId = data.session_id || "unknown";
+	const sessionId = data.session_id || data.sessionId || "unknown";
 	fetch(`${REST_URL}/agentmemory/summarize`, {
 		method: "POST",
 		headers: authHeaders(),
